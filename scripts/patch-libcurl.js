@@ -31,31 +31,27 @@ const filesToPatch = ["libcurl_full.js", "libcurl_full.mjs", "libcurl.js", "libc
 const ADD_CACERT_FN = `
 function add_cacert(pem_cert) {
   check_loaded(false);
-  // Get pointer to current PEM and read it
   var old_ptr = _get_cacert();
   var old_pem = UTF8ToString(old_ptr);
-  // Build new PEM: old + newline + new cert
   var new_pem = old_pem + "\\n" + pem_cert;
-  // Allocate WASM memory and write the new PEM
   var new_len = lengthBytesUTF8(new_pem) + 1;
   var new_ptr = _malloc(new_len);
   stringToUTF8(new_pem, new_ptr, new_len);
-  // Find cacert_blob in WASM memory by searching HEAP32 for old_ptr
-  // cacert_blob struct layout (wasm32): { data: i32, len: i32, flags: i32 }
+  // Update ALL occurrences of {old_ptr, ~old_len} in HEAP32
+  // (covers both the cacert_pem/cacert_pem_len globals and the cacert_blob struct)
   var heap32 = HEAP32;
+  var old_len = lengthBytesUTF8(old_pem);
+  var updated = 0;
   for (var i = 0; i < heap32.length; i++) {
     if (heap32[i] === old_ptr) {
-      // Verify: next word should be the old PEM length
-      var old_len = lengthBytesUTF8(old_pem);
       if (heap32[i + 1] === old_len || heap32[i + 1] === old_len + 1 || heap32[i + 1] === old_len - 1) {
-        // Update blob.data and blob.len
         heap32[i] = new_ptr;
         heap32[i + 1] = new_len - 1;
-        return;
+        updated++;
       }
     }
   }
-  throw new Error("add_cacert: could not locate cacert_blob in WASM memory");
+  if (updated === 0) throw new Error("add_cacert: could not locate cacert_blob in WASM memory");
 }
 `;
 
