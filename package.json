@@ -12,6 +12,7 @@
 		"url": "git+https://github.com/MercuryWorkshop/libcurl-transport.git"
 	},
   "scripts": {
+    "prebuild": "node scripts/patch-libcurl.js",
     "build": "node esbuild.bundle.mjs",
     "prepack": "npm run build"
   },
@@ -30,9 +31,17 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "browser": {
+        "import": "./dist/index.mjs",
+        "require": "./dist/index.js"
+      },
+      "node": {
+        "import": "./lib/index.cjs",
+        "require": "./lib/index.cjs"
+      },
+      "default": {
+        "types": "./lib/index.d.ts"
+      }
     }
   }
 }

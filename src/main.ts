@@ -12,6 +12,7 @@ export type LibcurlClientOptions = {
   proxy?: string;
   transport?: string;
   connections?: Array<number>;
+  cacert?: string;
 };
 export default class LibcurlClient implements ProxyTransport {
   session: any;
@@ -19,12 +20,14 @@ export default class LibcurlClient implements ProxyTransport {
   proxy?: string;
   transport?: string;
   connections?: Array<number>;
+  cacert?: string;
 
   constructor(options: LibcurlClientOptions) {
     this.wisp = options.wisp ?? options.websocket;
     this.transport = options.transport;
     this.proxy = options.proxy;
     this.connections = options.connections;
+    this.cacert = options.cacert;
     if (!this.wisp.endsWith("/")) {
       throw new TypeError(
         "The Websocket URL must end with a trailing forward slash."
@@ -58,6 +61,11 @@ export default class LibcurlClient implements ProxyTransport {
     }
 
     libcurl.set_websocket(this.wisp);
+
+    if (this.cacert) {
+      libcurl.add_cacert(this.cacert);
+    }
+
     this.session = new libcurl.HTTPSession({
       proxy: this.proxy,
     });
@@ -81,8 +89,14 @@ export default class LibcurlClient implements ProxyTransport {
     signal: AbortSignal | undefined
   ): Promise<TransferrableResponse> {
     let headersObj: Record<string, string> = {};
-    for (let [key, value] of headers) {
-      headersObj[key] = value;
+    if (headers && typeof headers === "object" && !Array.isArray(headers) && !(Symbol.iterator in headers)) {
+      for (const key of Object.keys(headers)) {
+        headersObj[key] = (headers as any)[key];
+      }
+    } else if (headers) {
+      for (let [key, value] of headers) {
+        headersObj[key] = value;
+      }
     }
     let payload = await this.session.fetch(remote.href, {
       method,
@@ -92,9 +106,23 @@ export default class LibcurlClient implements ProxyTransport {
       signal: signal,
     });
 
+    const normalizedHeaders: Record<string, string | string[]> = {};
+    for (const [rawKey, rawValue] of payload.raw_headers || []) {
+      const key = String(rawKey).toLowerCase();
+      const value = String(rawValue);
+      const existing = normalizedHeaders[key];
+      if (existing === undefined) {
+        normalizedHeaders[key] = value;
+      } else if (Array.isArray(existing)) {
+        existing.push(value);
+      } else {
+        normalizedHeaders[key] = [existing, value];
+      }
+    }
+
     return {
       body: payload.body!,
-      headers: payload.raw_headers,
+      headers: normalizedHeaders as any,
       status: payload.status,
       statusText: payload.statusText,
     };
@@ -113,8 +141,14 @@ export default class LibcurlClient implements ProxyTransport {
       (code: number, reason: string) => void,
     ] {
     let headersObj: Record<string, string> = {};
-    for (let [key, value] of requestHeaders) {
-      headersObj[key] = value;
+    if (requestHeaders && typeof requestHeaders === "object" && !Array.isArray(requestHeaders) && !(Symbol.iterator in requestHeaders)) {
+      for (const key of Object.keys(requestHeaders)) {
+        headersObj[key] = (requestHeaders as any)[key];
+      }
+    } else if (requestHeaders) {
+      for (let [key, value] of requestHeaders) {
+        headersObj[key] = value;
+      }
     }
 
     let socket = new libcurl.WebSocket(url.toString(), protocols, {
