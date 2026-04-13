@@ -6492,7 +6492,8 @@ var LibcurlClient = class {
       body,
       redirect: "manual",
       signal,
-      _libcurl_verbose: 1
+      _libcurl_verbose: 1,
+      _libcurl_http_version: 1.1
     });
     const normalizedHeaders = {};
     for (const [rawKey, rawValue] of payload.raw_headers || []) {
