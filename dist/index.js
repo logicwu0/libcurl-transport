@@ -6485,6 +6485,7 @@ var LibcurlClient = class {
         headersObj[key] = value;
       }
     }
+    console.log("[libcurl-transport] fetching:", remote.href, "with verbose");
     let payload = await this.session.fetch(remote.href, {
       method,
       headers: headersObj,
