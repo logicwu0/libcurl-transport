@@ -104,6 +104,7 @@ export default class LibcurlClient implements ProxyTransport {
       body,
       redirect: "manual",
       signal: signal,
+      _libcurl_verbose: 1,
     });
 
     const normalizedHeaders: Record<string, string | string[]> = {};
