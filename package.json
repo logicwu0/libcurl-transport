@@ -12,9 +12,7 @@
 		"url": "git+https://github.com/MercuryWorkshop/libcurl-transport.git"
 	},
   "scripts": {
-    "prebuild": "node scripts/patch-libcurl.js",
-    "build": "node esbuild.bundle.mjs",
-    "prepack": "npm run build"
+    "build": "node scripts/patch-libcurl.js && node esbuild.bundle.mjs"
   },
   "dependencies": {
     "libcurl.js": "^0.7.4"
